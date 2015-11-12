@@ -36,37 +36,40 @@ if __name__ == "__main__":
 
     root = top.root = Group()
 
-    root.add('thing', IndepVarComp('simtime', val="15.0"))
-    root.add('p1', IndepVarComp('nz', val=1.0))
-    root.add('p2', IndepVarComp('nn', val=1.0))
+    root.add('simprop', IndepVarComp('simtime', val="15.0"))
+    root.add('p1', IndepVarComp('rho', val=1.0))
+    root.add('p2', IndepVarComp('jturbine', val=1.0))
+    root.add('p3', IndepVarComp('ratio', val=1.0))
     root.add('modelica',
              OMModelWrapper('WindPowerPlants.Examples.GenericPlantRayleigh',
-                            '/Users/adam/repo/WindPowerPlants/WindPowerPlants/package.mo'))
-    root.add('tl', TakeLast())
+                            '/Users/adam/repos/WindPowerPlants/WindPowerPlants/package.mo'))
+    root.add('tl_peakPowerOutput', TakeLast())
+    root.add('tl_integratedEnergy', TakeLast())
 
-    top.driver = UniformDriver(1)
-    top.driver.add_desvar('p2.nn', low=1.0, high=10.0)
-    top.driver.add_desvar('p1.nz', low=5.0, high=25.0)
-    top.driver.add_objective('modelica.y_testvariable')
+    top.driver = UniformDriver(5000)
+    top.driver.add_desvar('p1.rho', low=1.0, high=1.5)
+    top.driver.add_desvar('p2.jturbine', low=13000000*0.7, high=130000000*1.3)
+    top.driver.add_desvar('p3.ratio', low=80.0, high=120.0)
+    top.driver.add_objective('tl_peakPowerOutput.output')
+    top.driver.add_objective('tl_integratedEnergy.output')
 
-    root.connect('thing.simtime', 'modelica.stopTime')
-    root.connect('p1.nz', 'modelica.nz')
-    root.connect('p2.nn', 'modelica.nn')
-    root.connect('modelica.y_testvariable', 'tl.input')
+    root.connect('simprop.simtime', 'modelica.stopTime')
+    root.connect('p1.rho', 'modelica.rho')
+    root.connect('p2.jturbine', 'modelica.jturbine')
+    root.connect('p3.ratio', 'modelica.ratio')
+    root.connect('modelica.peakPowerOutput', 'tl_peakPowerOutput.input')
+    root.connect('modelica.integratedEnergy', 'tl_integratedEnergy.input')
 
     # root.connect('thing.simtime', 'modelica.stopTime')
     # root.connect('thing2.nz', 'modelica.nz')
 
     recorder = CsvRecorder('dump.csv')
-    recorder.options['record_params'] = True
-    recorder.options['record_metadata'] = True
-    recorder.options['record_resids'] = True
+    recorder.options['record_params'] = False
+    recorder.options['record_metadata'] = False
+    recorder.options['record_resids'] = False
     top.driver.add_recorder(recorder)
 
     top.setup()
     top.run()
-
-    print ('modelica.y_testvariable', top['modelica.y_testvariable'])
-    print ('tl.output', top['tl.output'])
 
     top.driver.recorders[0].close()
